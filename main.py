@@ -34,7 +34,7 @@ def fetch_aqi(city, api_key):
 # ----------------- GUI Setup -----------------
 root = tk.Tk()
 root.title("Real-Time AQI Dashboard")
-root.geometry("1600x850")  # Increased width for more visualizations
+root.geometry("1600x900")  # Adjusted for better visual space
 root.configure(bg="#f0f4f8")
 
 # ----------------- Sidebar -----------------
@@ -60,7 +60,15 @@ city_combobox.pack(pady=10)
 main_frame = tk.Frame(root, bg="white")
 main_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 canvas_frame = tk.Frame(main_frame, bg="white")
-canvas_frame.pack()
+canvas_frame.pack(fill=tk.BOTH, expand=True)
+
+# Use grid layout for the visualizations
+canvas_frame.grid_rowconfigure(0, weight=1)
+canvas_frame.grid_rowconfigure(1, weight=1)
+canvas_frame.grid_rowconfigure(2, weight=1)
+canvas_frame.grid_columnconfigure(0, weight=1)
+canvas_frame.grid_columnconfigure(1, weight=1)
+canvas_frame.grid_columnconfigure(2, weight=1)
 
 figures = {}
 
@@ -69,13 +77,13 @@ def create_chart(name, fig, row, col):
         "fig": fig,
         "canvas": FigureCanvasTkAgg(fig, master=canvas_frame)
     }
-    figures[name]["canvas"].get_tk_widget().grid(row=row, column=col, padx=10, pady=10)
+    figures[name]["canvas"].get_tk_widget().grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
 
-create_chart("bar", plt.Figure(figsize=(4, 3), dpi=100), 0, 0)
-create_chart("pie", plt.Figure(figsize=(4, 3), dpi=100), 0, 1)
-create_chart("line", plt.Figure(figsize=(4, 3), dpi=100), 1, 0)
-create_chart("heatmap", plt.Figure(figsize=(4, 3), dpi=100), 1, 1)
-create_chart("scatter", plt.Figure(figsize=(4, 3), dpi=100), 2, 0)
+create_chart("bar", plt.Figure(figsize=(5, 3), dpi=100), 0, 0)
+create_chart("pie", plt.Figure(figsize=(5, 3), dpi=100), 0, 1)
+create_chart("line", plt.Figure(figsize=(5, 3), dpi=100), 1, 0)
+create_chart("heatmap", plt.Figure(figsize=(5, 3), dpi=100), 1, 1)
+create_chart("scatter", plt.Figure(figsize=(5, 3), dpi=100), 2, 0)
 
 aqi_label_title = tk.Label(canvas_frame, text="Real-Time AQI", font=("Segoe UI", 18, "bold"), bg="white")
 aqi_label_title.grid(row=0, column=2, pady=10)
