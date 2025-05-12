@@ -5,6 +5,21 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
 import seaborn as sns
+import os
+import json
+
+# ----------------- File to Store API Key -----------------
+API_FILE = "aqi_api_config.json"
+
+def save_api_key(key):
+    with open(API_FILE, "w") as f:
+        json.dump({"api_key": key}, f)
+
+def load_api_key():
+    if os.path.exists(API_FILE):
+        with open(API_FILE, "r") as f:
+            return json.load(f).get("api_key", "")
+    return ""
 
 # ----------------- AQI Fetch Function -----------------
 def fetch_aqi(city, api_key):
@@ -34,7 +49,7 @@ def fetch_aqi(city, api_key):
 # ----------------- GUI Setup -----------------
 root = tk.Tk()
 root.title("Real-Time AQI Dashboard")
-root.geometry("1600x900")  # Adjusted for better visual space
+root.geometry("1600x900")
 root.configure(bg="#f0f4f8")
 
 # ----------------- Sidebar -----------------
@@ -44,16 +59,36 @@ sidebar.pack(side=tk.LEFT, fill=tk.Y)
 style_label = {"bg": "#2c3e50", "fg": "white", "font": ("Segoe UI", 12)}
 
 tk.Label(sidebar, text="Control Panel", bg="#2c3e50", fg="white", font=("Segoe UI", 16, "bold")).pack(pady=20)
-tk.Label(sidebar, text="Enter API Key:", **style_label).pack()
+tk.Label(sidebar, text="API Key:", **style_label).pack()
+
 api_entry = tk.Entry(sidebar, width=30)
+api_entry.insert(0, load_api_key())
+api_entry.config(state='disabled')
 api_entry.pack(pady=5)
 
+def enable_api_key_edit():
+    api_entry.config(state='normal')
+    messagebox.showinfo("Edit API Key", "You can now edit the API key. Don’t forget to click 'Save API Key' after editing.")
+
+tk.Button(sidebar, text="Change API Key", command=enable_api_key_edit, bg="#f39c12", fg="white").pack(pady=5)
+
+def save_key():
+    key = api_entry.get().strip()
+    if key:
+        save_api_key(key)
+        api_entry.config(state='disabled')
+        messagebox.showinfo("Saved", "API Key saved and locked.")
+    else:
+        messagebox.showerror("Error", "API key cannot be empty.")
+
+tk.Button(sidebar, text="Save API Key", command=save_key, bg="#16a085", fg="white").pack(pady=5)
+
 tk.Label(sidebar, text="Select City:", **style_label).pack()
-city_combobox = ttk.Combobox(sidebar, values=list({
+city_combobox = ttk.Combobox(sidebar, values=[
     "Delhi", "Mumbai", "Kolkata", "Bangalore", "Chennai",
     "Hyderabad", "Ahmedabad", "Pune", "Jaipur", "Lucknow"
-}), width=27)
-city_combobox.current(0)
+], width=27)
+city_combobox.set("Delhi")
 city_combobox.pack(pady=10)
 
 # ----------------- Main Area -----------------
@@ -62,7 +97,6 @@ main_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 canvas_frame = tk.Frame(main_frame, bg="white")
 canvas_frame.pack(fill=tk.BOTH, expand=True)
 
-# Use grid layout for the visualizations
 canvas_frame.grid_rowconfigure(0, weight=1)
 canvas_frame.grid_rowconfigure(1, weight=1)
 canvas_frame.grid_rowconfigure(2, weight=1)
@@ -91,26 +125,23 @@ aqi_label_title.grid(row=0, column=2, pady=10)
 aqi_label_value = tk.Label(canvas_frame, text="AQI Not Available", font=("Segoe UI", 14), bg="white")
 aqi_label_value.grid(row=1, column=2)
 
-# ----------------- Update Charts -----------------
 def update_charts(aqi, components):
-    # Bar Chart
+    labels = list(components.keys())
+    values = list(components.values())
+
     ax1 = figures["bar"]["fig"].clear()
     ax1 = figures["bar"]["fig"].add_subplot(111)
     ax1.set_title("Pollutant Concentration (µg/m³)")
-    labels = list(components.keys())
-    values = list(components.values())
     ax1.bar(labels, values, color="#2980b9")
     ax1.tick_params(axis='x', rotation=45)
     figures["bar"]["canvas"].draw()
 
-    # Pie Chart
     ax2 = figures["pie"]["fig"].clear()
     ax2 = figures["pie"]["fig"].add_subplot(111)
     ax2.set_title("Pollutant Distribution")
     ax2.pie(values, labels=labels, autopct='%1.1f%%', colors=plt.cm.tab20.colors)
     figures["pie"]["canvas"].draw()
 
-    # Line Chart (simulated time variation)
     ax3 = figures["line"]["fig"].clear()
     ax3 = figures["line"]["fig"].add_subplot(111)
     ax3.set_title("Simulated PM2.5 Over Time")
@@ -119,15 +150,13 @@ def update_charts(aqi, components):
     ax3.set_ylabel("PM2.5 µg/m³")
     figures["line"]["canvas"].draw()
 
-    # Heatmap (simulated)
     ax4 = figures["heatmap"]["fig"].clear()
     ax4 = figures["heatmap"]["fig"].add_subplot(111)
     ax4.set_title("PM2.5 Heatmap")
-    data = np.random.rand(10, 10)  # Simulated heatmap data
+    data = np.random.rand(10, 10)
     sns.heatmap(data, cmap="YlGnBu", ax=ax4)
     figures["heatmap"]["canvas"].draw()
 
-    # Scatter Plot (PM10 vs CO)
     ax5 = figures["scatter"]["fig"].clear()
     ax5 = figures["scatter"]["fig"].add_subplot(111)
     ax5.set_title("PM10 vs CO")
@@ -138,13 +167,13 @@ def update_charts(aqi, components):
     ax5.set_ylabel("CO µg/m³")
     figures["scatter"]["canvas"].draw()
 
-# ----------------- AQI Fetch and Update -----------------
 def update_aqi():
     city = city_combobox.get()
-    api_key = api_entry.get().strip()
+    api_key = load_api_key()
     if not api_key:
         messagebox.showwarning("Missing API Key", "Please enter a valid API key!")
         return
+
     aqi, components = fetch_aqi(city, api_key)
     if aqi is not None:
         aqi_status = {
@@ -159,7 +188,47 @@ def update_aqi():
     else:
         aqi_label_value.config(text="Failed to fetch AQI")
 
-# ----------------- Button -----------------
+def reset_dashboard():
+    city_combobox.set("")
+    aqi_label_value.config(text="AQI Not Available")
+    for chart in figures.values():
+        chart["fig"].clear()
+        chart["canvas"].draw()
+
+def open_compare_screen():
+    def compare():
+        c1 = combo_city1.get()
+        c2 = combo_city2.get()
+        key = load_api_key()
+        if not key:
+            messagebox.showerror("API Key Missing", "Enter API key before comparing.")
+            return
+        aqi1, _ = fetch_aqi(c1, key)
+        aqi2, _ = fetch_aqi(c2, key)
+        if aqi1 is None or aqi2 is None:
+            messagebox.showerror("Error", "Failed to fetch AQI data.")
+            return
+        plt.figure(figsize=(6, 4))
+        plt.bar([c1, c2], [aqi1, aqi2], color=["#3498db", "#e74c3c"])
+        plt.title("AQI Comparison")
+        plt.ylabel("AQI")
+        plt.grid(True)
+        plt.show()
+
+    win = tk.Toplevel(root)
+    win.title("Compare AQI")
+    win.geometry("300x200")
+    tk.Label(win, text="City 1").pack(pady=5)
+    combo_city1 = ttk.Combobox(win, values=city_combobox["values"])
+    combo_city1.pack()
+    tk.Label(win, text="City 2").pack(pady=5)
+    combo_city2 = ttk.Combobox(win, values=city_combobox["values"])
+    combo_city2.pack()
+    tk.Button(win, text="Compare", command=compare).pack(pady=10)
+
+# ----------------- Buttons -----------------
 tk.Button(sidebar, text="Get Real-Time AQI", command=update_aqi, bg="#27ae60", fg="white", font=("Segoe UI", 11)).pack(pady=20)
+tk.Button(sidebar, text="Compare Two Cities", command=open_compare_screen, bg="#2980b9", fg="white", font=("Segoe UI", 11)).pack(pady=10)
+tk.Button(sidebar, text="Reset", command=reset_dashboard, bg="#c0392b", fg="white", font=("Segoe UI", 11)).pack(pady=10)
 
 root.mainloop()
